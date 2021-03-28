@@ -1,58 +1,91 @@
 #providers
 provider "aws" {
-	region = "${var.region}"
+  region = var.region
 }
 
 #resources
 resource "aws_vpc" "vpc" {
-  cidr_block = "${var.cidr_vpc}"
+  cidr_block           = var.cidr_vpc
   enable_dns_support   = true
   enable_dns_hostnames = true
+  tags = {
+    owner              = "${var.owner}"
+    se-region          = "${var.se-region}"
+    purpose            = "${var.purpose}"
+    ttl                = "${var.ttl}"
+    terraform          = true
+    hc-internet-facing = false
+  }
 }
 
 resource "aws_internet_gateway" "igw" {
-  vpc_id = "${aws_vpc.vpc.id}"
+  vpc_id = aws_vpc.vpc.id
+  tags = {
+    owner              = "${var.owner}"
+    se-region          = "${var.se-region}"
+    purpose            = "${var.purpose}"
+    ttl                = "${var.ttl}"
+    terraform          = true
+    hc-internet-facing = true
+  }
 }
 
 resource "aws_subnet" "subnet_public" {
-  vpc_id = "${aws_vpc.vpc.id}"
-  cidr_block = "${var.cidr_subnet}"
+  vpc_id                  = aws_vpc.vpc.id
+  cidr_block              = var.cidr_subnet
   map_public_ip_on_launch = "true"
-  availability_zone = "${var.availability_zone}"
+  availability_zone       = var.availability_zone
+  tags = {
+    owner              = "${var.owner}"
+    se-region          = "${var.se-region}"
+    purpose            = "${var.purpose}"
+    ttl                = "${var.ttl}"
+    terraform          = true
+    hc-internet-facing = false
+  }
 }
 
 resource "aws_route_table" "rtb_public" {
-  vpc_id = "${aws_vpc.vpc.id}"
+  vpc_id = aws_vpc.vpc.id
 
   route {
-      cidr_block = "0.0.0.0/0"
-      gateway_id = "${aws_internet_gateway.igw.id}"
+    cidr_block = "0.0.0.0/0"
+    gateway_id = aws_internet_gateway.igw.id
+  }
+
+  tags = {
+    owner              = "${var.owner}"
+    se-region          = "${var.se-region}"
+    purpose            = "${var.purpose}"
+    ttl                = "${var.ttl}"
+    terraform          = true
+    hc-internet-facing = false
   }
 
 }
 
 resource "aws_route_table_association" "rta_subnet_public" {
-  subnet_id      = "${aws_subnet.subnet_public.id}"
-  route_table_id = "${aws_route_table.rtb_public.id}"
+  subnet_id      = aws_subnet.subnet_public.id
+  route_table_id = aws_route_table.rtb_public.id
 }
 
 resource "aws_security_group" "sg_22_80" {
-  name = "sg_22"
-  vpc_id = "${aws_vpc.vpc.id}"
+  name   = "sg_22"
+  vpc_id = aws_vpc.vpc.id
 
   # SSH access from the VPC
   ingress {
-      from_port   = 22
-      to_port     = 22
-      protocol    = "tcp"
-      cidr_blocks = ["0.0.0.0/0"]
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
   }
 
   ingress {
-      from_port   = 80
-      to_port     = 80
-      protocol    = "tcp"
-      cidr_blocks = ["0.0.0.0/0"]
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
   }
 
   egress {
@@ -61,20 +94,35 @@ resource "aws_security_group" "sg_22_80" {
     protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
-
+  tags = {
+    owner              = "${var.owner}"
+    se-region          = "${var.se-region}"
+    purpose            = "${var.purpose}"
+    ttl                = "${var.ttl}"
+    terraform          = true
+    hc-internet-facing = false
+  }
 }
 
 resource "aws_key_pair" "ec2key" {
-  key_name = "${var.public_key_name}"
-  public_key = "${file(var.public_key_path)}"
+  key_name   = var.public_key_name
+  public_key = file(var.public_key_path)
+  tags = {
+    owner              = "${var.owner}"
+    se-region          = "${var.se-region}"
+    purpose            = "${var.purpose}"
+    ttl                = "${var.ttl}"
+    terraform          = true
+    hc-internet-facing = false
+  }
 }
 
 resource "aws_instance" "testInstance" {
-  ami           = "${var.instance_ami}"
-  instance_type = "${var.instance_type}"
-  subnet_id = "${aws_subnet.subnet_public.id}"
+  ami                    = var.instance_ami
+  instance_type          = var.instance_type
+  subnet_id              = aws_subnet.subnet_public.id
   vpc_security_group_ids = ["${aws_security_group.sg_22_80.id}"]
-  key_name = "${aws_key_pair.ec2key.key_name}"
+  key_name               = aws_key_pair.ec2key.key_name
 
   provisioner "remote-exec" {
     inline = [
@@ -85,10 +133,18 @@ resource "aws_instance" "testInstance" {
   }
 
   connection {
-    type     = "ssh"
-    user     = "ec2-user"
-    password = ""
-    host = "${aws_instance.testInstance.public_ip}"
-    private_key = "${file("~/.ssh/id_rsa")}"
+    type        = "ssh"
+    user        = "ec2-user"
+    password    = ""
+    host        = aws_instance.testInstance.public_ip
+    private_key = file("~/.ssh/id_rsa")
+  }
+  tags = {
+    owner              = "${var.owner}"
+    se-region          = "${var.se-region}"
+    purpose            = "${var.purpose}"
+    ttl                = "${var.ttl}"
+    terraform          = true
+    hc-internet-facing = false
   }
 }
