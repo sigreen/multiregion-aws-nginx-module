@@ -137,7 +137,9 @@ resource "aws_instance" "testInstance" {
     user        = "ec2-user"
     password    = ""
     host        = aws_instance.testInstance.public_ip
-    private_key = file("~/.ssh/id_rsa")
+    //private_key = file("~/.ssh/id_rsa")
+    private_key = "${file("~/.ssh/id_rsa")}"
+
   }
   tags = {
     owner              = "${var.owner}"
