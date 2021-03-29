@@ -3,6 +3,12 @@ provider "aws" {
   region = var.region
 }
 
+#create SSH key
+resource "tls_private_key" "example" {
+  algorithm = "RSA"
+  rsa_bits  = 4096
+}
+
 #resources
 resource "aws_vpc" "vpc" {
   cidr_block           = var.cidr_vpc
@@ -106,7 +112,7 @@ resource "aws_security_group" "sg_22_80" {
 
 resource "aws_key_pair" "ec2key" {
   key_name   = var.public_key_name
-  public_key = file(var.public_key_path)
+  public_key = "${tls_private_key.example.public_key_openssh}"
   tags = {
     owner              = "${var.owner}"
     se-region          = "${var.se-region}"
@@ -137,8 +143,7 @@ resource "aws_instance" "testInstance" {
     user        = "ec2-user"
     password    = ""
     host        = aws_instance.testInstance.public_ip
-    //private_key = file("~/.ssh/id_rsa")
-    private_key = "${file("~/.ssh/id_rsa")}"
+    private_key = "${tls_private_key.example.private_key_pem}"
 
   }
   tags = {
